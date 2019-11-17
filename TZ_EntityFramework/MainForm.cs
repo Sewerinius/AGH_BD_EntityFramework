@@ -23,6 +23,7 @@ namespace TZ_EntityFramework
                 convertEventArgs.Value = "Selected company: " + convertEventArgs.Value;
             };
             label2.DataBindings.Add(labelBinding);
+            orderClientGridView.CellFormatting += Grid_CellFormatting;
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -34,6 +35,19 @@ namespace TZ_EntityFramework
             db.Orders.Load();
             categoryBindingSource.DataSource = db.Categories.Local.ToBindingList();
             customerBindingSource.DataSource = db.Customers.Local.ToBindingList();
+        }
+
+        private void Grid_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            DataGridViewColumn column = orderClientGridView.Columns[e.ColumnIndex];
+            if (column.DataPropertyName.Contains("."))
+            {
+                object data = orderClientGridView.Rows[e.RowIndex].DataBoundItem;
+                string[] properties = column.DataPropertyName.Split('.');
+                for (int i = 0; i < properties.Length && data != null; i++)
+                    data = data.GetType().GetProperty(properties[i]).GetValue(data);
+                orderClientGridView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = data;
+            }
         }
 
         private void MainForm_FormClosed(object sender, FormClosedEventArgs e)
@@ -55,8 +69,7 @@ namespace TZ_EntityFramework
                 bindingNavigatorAddNewItem1.Enabled = true;
                 Category SelectedCategory = (Category)categoryDataGridView.SelectedRows[0].DataBoundItem;
                 //productBindingSource.DataSource = new BindingList<Product>(db.Products.Local.Where(product => product.CategoryID == SelectedCategory.CategoryID).ToList());
-                BindingList<Product> bindingList = new BindingList<Product>(SelectedCategory.Products);
-                productBindingSource.DataSource = bindingList;
+                productBindingSource.DataSource = new BindingList<Product>(SelectedCategory.Products);
             }
             else
             {
@@ -173,7 +186,34 @@ namespace TZ_EntityFramework
         {
             foreach (DataGridViewRow row in orderProductGridView.SelectedRows)
             {
-                db.Orders.Remove((Order)row.DataBoundItem);
+                Order order = (Order)row.DataBoundItem;
+                orderProductGridView.Rows.Remove(row);
+                db.Orders.Remove(order);
+            }
+        }
+
+        private void toolStripButton21_Click(object sender, EventArgs e)
+        {
+            foreach (DataGridViewRow row in orderClientGridView.SelectedRows)
+            {
+                Order order = (Order)row.DataBoundItem;
+                orderClientGridView.Rows.Remove(row);
+                db.Orders.Remove(order);
+            }
+        }
+
+        private void productDataGridView_DataError(object sender, DataGridViewDataErrorEventArgs e)
+        {
+            if (categoryDataGridView.SelectedRows.Count == 1 && categoryDataGridView.SelectedRows[0].Index != categoryDataGridView.RowCount - 1)
+            {
+                bindingNavigatorAddNewItem1.Enabled = true;
+                Category SelectedCategory = (Category)categoryDataGridView.SelectedRows[0].DataBoundItem;
+                productBindingSource.DataSource = new BindingList<Product>(SelectedCategory.Products);
+            }
+            else
+            {
+                bindingNavigatorAddNewItem1.Enabled = false;
+                productBindingSource.DataSource = null;
             }
         }
     }
